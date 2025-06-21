@@ -1,68 +1,53 @@
-#pragma once
-#include "CPU6502.h"
-#include <array>
-#include <cstdint>
-#include "PPU2C02.h"
+﻿#pragma once
+#include<cstdint>
+#include<array>
+
+#include "olc6502.h"
+#include "olc2C02.h"
+#include "olc2A03.h"
 #include "Cartridge.h"
-#include "APU2A03.h"
 
-// Ram array?
-/*
-g++ olcNes_Sounds1.cpp Bus.cpp CPU6502.cpp PPU2C02.cpp Cartridge.cpp Mapper_000.cpp Mapper.cpp -o marioFG -lopengl32 -lglu32 -lgdi32 -luser32 -lgdiplus -lshlwapi -ldwmapi
-*/
-
-class Bus{
-
+class Bus {
     public:
         Bus();
         ~Bus();
-    
-    //Connect bus to cpu
-    public:
-        //Devices Connected to the Bus
-        CPU6502 cpu;
-        PPU2C02 ppu;
-        APU2A03 apu;
+
+    // devices on the bus
+        olc6502 cpu;
+        olc2C02 ppu;
+        olc2A03 apu;
         std::shared_ptr<Cartridge> cart;
-
-        double audioSample = 0.0;
-        void SetSampleFrequency(uint32_t sampleRate);
-        
-        
-        //NES has effectively 2kB of ram but its address range is 
-        //$0000 -  $1FFF which is 8kB memory.
-        //Concept of mirrorring is used here and the first 2kB of memory is the actual hardware memory. The
-        //rest three 2kB chunks are effectively mapped to the original 2kB section.
-        uint8_t cpuRam[2048]; 
+        uint8_t cpuRam[2048]; // 64 * 1024
         uint8_t controller[2];
-        
-        //Functionalities
-        
-        //Read and Write from and to CPU
+
+    // bus read and cpuWrite functions
         void cpuWrite(uint16_t addr, uint8_t data);
-        uint8_t cpuRead(uint16_t addr, bool bReadOnly = false);
-        
-        
-        //System Interface
-        //Our bus basically represents the complete NES system.
+        uint8_t cpuRead (uint16_t addr, bool bReadOnly = false);
+
+    // to interrogate the instance of the bus at any point of time to ask what the current output is
+        double dAudioSample = 0.0;
+        void SetSampleFrequency(uint32_t sample_rate); // to inform the apu about the temporal properites of the surrounding emulation system
+    
+
+    // the NES has three ways of interacting with the bus
+        void insertCartridge(const std::shared_ptr<Cartridge>& cartridge); // takes shared ptr to a catridge object
         void reset();
-        bool clock();
-        void insertCartridge(const std::shared_ptr<Cartridge> &cartridge);
-        
-    private:
-        double audioTimePerSystemSample = 0.0;  
-        double audioTimePerNESClock = 0.0;
-        double audioTime = 0.0;
-
+        bool clock(); // to create one system tick of the emulation
 
     private:
+        double dAudioTimePerSystemSample = 0.0f;
+        double dAudioTimePerNESClock = 0.0;
+        double dAudioTime = 0.0;
+
+    private:
+    // to count how many time the clock function has been called
         uint32_t nSystemClockCounter = 0;
-        uint8_t controllerState[2];
+        uint8_t controller_state[2];
 
-        uint8_t dmaPage = 0x00;
-        uint8_t dmaAddr = 0x00;
-        uint8_t dmaData = 0x00;
+        uint8_t dma_page = 0x00; // forms 16 bit address with dma_addr
+        uint8_t dma_addr = 0x00;
+        uint8_t dma_data = 0x00; // represents the byte of data in transit from the cpu's memory to the oam
 
-        bool dmaTransfer = false;
-        bool dmaDummy = true;
+        bool dma_transfer = false;
+        bool dma_dummy = true;
 };
